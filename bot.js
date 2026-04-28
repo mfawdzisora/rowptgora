@@ -40,12 +40,6 @@ const token = '8637299952:AAFHGRpVDHBtoeJoCBT5yvs0OKSXNgEHTDk';
 const bot = new TelegramBot(token, {
     polling: { interval: 3000, autoStart: true, params: { timeout: 10 } }
 });
-// Pastikan tidak ada getUpdates yang overlap saat start
-bot.deleteWebHook().then(() => {
-    console.log("✅ Webhook cleared, polling dimulai");
-}).catch(err => {
-    console.log("⚠️ deleteWebHook error:", err.message);
-});
 
 bot.on('polling_error', (err) => console.log(`⚠️ Polling error: ${err.code} — ${err.message}`));
 bot.on('error', (err) => console.log(`⚠️ Bot error: ${err.message}`));
@@ -168,46 +162,32 @@ function hitungMeterSesi(sesi) {
 // ==================
 function jadwalReset() {
     const now = new Date();
-    
-    // Hitung jam 00:00 WIB berikutnya (WIB = UTC+7)
-    // 00:00 WIB = 17:00 UTC hari sebelumnya
-    const nowUTC = now.getTime();
-    const wibOffset = 7 * 60 * 60 * 1000; // UTC+7 dalam ms
-    
-    const nowWIB = new Date(nowUTC + wibOffset);
-    
-    // Besok jam 00:00 WIB
-    const besokWIB = new Date(nowWIB);
-    besokWIB.setUTCDate(nowWIB.getUTCDate() + 1);
-    besokWIB.setUTCHours(0, 0, 0, 0);
-    
-    // Konversi balik ke UTC untuk setTimeout
-    const targetUTC = besokWIB.getTime() - wibOffset;
-    const selisih = targetUTC - nowUTC;
+    const besok = new Date();
+    besok.setDate(now.getDate() + 1);
+    besok.setHours(0, 0, 0, 0);
+    const selisih = besok - now;
 
     setTimeout(() => {
-        const tanggalBackup = nowWIB.toISOString().slice(0, 10); // YYYY-MM-DD WIB
-        console.log("🔄 RESET DATA TENGAH MALAM WIB...");
-        const backupFile = path.join(__dirname, `backup_${tanggalBackup}.json`);
+        console.log("🔄 RESET DATA TENGAH MALAM...");
+        const backupFile = path.join(__dirname, `backup_${getTanggal()}.json`);
         fs.writeFileSync(backupFile, JSON.stringify({ laporan, antrian, laporanHujan }, null, 2));
         laporan = [];
         antrian = [];
         laporanHujan = [];
         userState = {};
         saveData();
-        console.log("✅ Data berhasil direset (WIB)");
+        console.log("✅ Data berhasil direset");
         jadwalReset();
     }, selisih);
 
-    const menitLagi = Math.round(selisih / 1000 / 60);
-    console.log(`⏰ Reset WIB dijadwalkan dalam ${menitLagi} menit`);
+    console.log(`⏰ Reset dijadwalkan dalam ${Math.round(selisih/1000/60)} menit`);
 }
 
+jadwalReset();
+
 function getTanggal() {
-    // Pakai waktu WIB (UTC+7)
-    const wibOffset = 7 * 60 * 60 * 1000;
-    const d = new Date(Date.now() + wibOffset);
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+    let d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 // ==================
