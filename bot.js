@@ -484,7 +484,9 @@ bot.on('message', async (msg) => {
         });
 
         let hasil = `🗺 REAL-TIME PENYISIRAN ALL AREA\n`;
-        hasil += `📅 ${new Date().toLocaleString('id-ID')}\n`;
+       hasil += `📅 ${new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta'
+})}\n`;
         hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
         hasil += `👷 AKTIVITAS PENYISIRAN PETUGAS\n`;
@@ -1056,7 +1058,9 @@ bot.on('video', async (msg) => {
 // PROSES HASIL LAPORAN HUJAN
 // ==================
 async function prosesHasilHujan(chatId) {
-    const waktu = new Date().toLocaleString();
+   const waktu = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta'
+});
     const koordinat = userState[chatId].koordinatHujan;
     const keterangan = userState[chatId].keteranganHujan || "-";
     const mediaList = userState[chatId].mediaHujan.filter(m => m !== null);
@@ -1110,7 +1114,9 @@ async function prosesHasilFoto(chatId) {
     }
 
     const koordinat = userState[chatId].koordinat;
-    const waktu = new Date().toLocaleString();
+  const waktu = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta'
+});
 
     const data = {
         user: verifiedUsers[chatId].name,
