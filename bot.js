@@ -40,6 +40,12 @@ const token = '8637299952:AAFHGRpVDHBtoeJoCBT5yvs0OKSXNgEHTDk';
 const bot = new TelegramBot(token, {
     polling: { interval: 3000, autoStart: true, params: { timeout: 10 } }
 });
+// Pastikan tidak ada getUpdates yang overlap saat start
+bot.deleteWebHook().then(() => {
+    console.log("✅ Webhook cleared, polling dimulai");
+}).catch(err => {
+    console.log("⚠️ deleteWebHook error:", err.message);
+});
 
 bot.on('polling_error', (err) => console.log(`⚠️ Polling error: ${err.code} — ${err.message}`));
 bot.on('error', (err) => console.log(`⚠️ Bot error: ${err.message}`));
