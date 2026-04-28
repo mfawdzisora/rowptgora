@@ -158,39 +158,43 @@ function hitungMeterSesi(sesi) {
 }
 
 // ==================
-// RESET JAM 12 MALAM
+// RESET JAM 12 MALAM (WIB)
 // ==================
-const now = new Date();
+function jadwalReset() {
+    const now = new Date();
 
-// ambil waktu WIB
-const nowWIB = new Date(now.toLocaleString("en-US", {
-    timeZone: "Asia/Jakarta"
-}));
+    const nowWIB = new Date(now.toLocaleString("en-US", {
+        timeZone: "Asia/Jakarta"
+    }));
 
-// target jam 00:00 WIB besok
-const besokWIB = new Date(nowWIB);
-besokWIB.setDate(nowWIB.getDate() + 1);
-besokWIB.setHours(0, 0, 0, 0);
+    const besokWIB = new Date(nowWIB);
+    besokWIB.setDate(nowWIB.getDate() + 1);
+    besokWIB.setHours(0, 0, 0, 0);
 
-// hitung selisih waktu
-const selisih = besokWIB.getTime() - nowWIB.getTime();
+    const selisih = besokWIB.getTime() - nowWIB.getTime();
 
     setTimeout(() => {
-        console.log("🔄 RESET DATA TENGAH MALAM...");
+        console.log("🔄 RESET DATA TENGAH MALAM WIB...");
+
         const backupFile = path.join(__dirname, `backup_${getTanggal()}.json`);
         fs.writeFileSync(backupFile, JSON.stringify({ laporan, antrian, laporanHujan }, null, 2));
+
         laporan = [];
         antrian = [];
         laporanHujan = [];
         userState = {};
+
         saveData();
+
         console.log("✅ Data berhasil direset");
-        jadwalReset();
+
+        jadwalReset(); // ulang lagi
     }, selisih);
 
     console.log(`⏰ Reset dijadwalkan dalam ${Math.round(selisih/1000/60)} menit`);
 }
 
+// jalankan pertama kali
 jadwalReset();
 
 function getTanggal() {
