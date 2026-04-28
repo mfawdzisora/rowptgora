@@ -219,19 +219,20 @@ function buatSesi(kpList) {
 // ==================
 function showMenu(chatId) {
     let role = verifiedUsers[chatId]?.role;
-    let menu = [["📷 Dokumentasi Pengawasan Jalur ROW"]];
+    let menu = [["📷 Dokumentasi Penyisiran Jalur ROW"]];
 
     if (role === "petugas") {
-        menu.push(["📋 History Pengawasan"]);
+        menu.push(["📋 History Penyisiran"]);
+        menu.push(["🗺 Real-Time Penyisiran All Area"]);
         menu.push(["🔀 Pindah Segment"]);
         menu.push(["🌧 Report Hujan"]);
-        menu.push(["📤 Export Pengawasan Jalur ROW"]);
+        menu.push(["📤 Export Penyisiran Jalur ROW"]);
         menu.push(["🚪 Log out"]);
     }
 
     if (role === "admin") {
-        menu.push(["📤 Export Pengawasan Jalur ROW"]);
-        menu.push(["📊 Dashboard Live Pengawasan Jalur ROW"]);
+        menu.push(["📤 Export Penyisiran Jalur ROW"]);
+        menu.push(["📊 Dashboard Live Penyisiran Jalur ROW"]);
         menu.push(["👷 Data Petugas Jalur ROW"]);
         menu.push(["🌿 Data Jalur ROW Bersemak"]);
         menu.push(["🚧 Data Finding/Pelanggaran Jalur ROW"]);
@@ -369,14 +370,14 @@ bot.on('message', async (msg) => {
     }
 
     // ==================
-    // HISTORY PENGAWASAN
+    // HISTORY PENYISIRAN
     // ==================
-    if (text === "📋 History Pengawasan") {
+    if (text === "📋 History Penyisiran") {
         let nama = verifiedUsers[chatId].name;
         let dataUser = laporan.filter(x => x.user === nama);
         let dataHujanUser = laporanHujan.filter(x => x.user === nama);
 
-        if (dataUser.length === 0 && dataHujanUser.length === 0) return kirimPesan(chatId, "❌ Belum ada history pengawasan");
+        if (dataUser.length === 0 && dataHujanUser.length === 0) return kirimPesan(chatId, "❌ Belum ada history penyisiran");
 
         let rekapSegment = {};
         dataUser.forEach(d => {
@@ -392,8 +393,8 @@ bot.on('message', async (msg) => {
 
         let rekapPelanggaran = dataUser.filter(d => d.analisaROW === "Ada Pelanggaran");
 
-        let hasil = `📋 HISTORY PENGAWASAN\n👤 ${nama}\n\n`;
-        hasil += `━━━━━━━━━━━━━━━━━━━━\n📍 REKAP PENGAWASAN\n━━━━━━━━━━━━━━━━━━━━\n`;
+        let hasil = `📋 HISTORY PENYISIRAN\n👤 ${nama}\n\n`;
+        hasil += `━━━━━━━━━━━━━━━━━━━━\n📍 REKAP PENYISIRAN\n━━━━━━━━━━━━━━━━━━━━\n`;
 
         let totalTitikAll = 0;
         let totalMeterAll = 0;
@@ -460,6 +461,78 @@ bot.on('message', async (msg) => {
     }
 
     // ==================
+    // REAL-TIME PENYISIRAN ALL AREA (PETUGAS)
+    // ==================
+    if (text === "🗺 Real-Time Penyisiran All Area") {
+        if (laporan.length === 0) return kirimPesan(chatId, "❌ Belum ada data penyisiran dari petugas manapun");
+
+        // Rekap per petugas per segment
+        let rekapPetugas = {};
+        laporan.forEach(d => {
+            let key = `${d.user}||${d.segment}`;
+            if (!rekapPetugas[key]) {
+                rekapPetugas[key] = {
+                    user: d.user,
+                    segment: d.segment,
+                    kpList: [],
+                    waktuTerakhir: d.waktu
+                };
+            }
+            rekapPetugas[key].kpList.push(d.kp);
+            // Simpan waktu paling akhir
+            rekapPetugas[key].waktuTerakhir = d.waktu;
+        });
+
+        let hasil = `🗺 REAL-TIME PENYISIRAN ALL AREA\n`;
+        hasil += `📅 ${new Date().toLocaleString('id-ID')}\n`;
+        hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+        hasil += `👷 AKTIVITAS PENYISIRAN PETUGAS\n`;
+        hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+
+        // Kelompokkan per petugas
+        let perPetugas = {};
+        Object.values(rekapPetugas).forEach(item => {
+            if (!perPetugas[item.user]) perPetugas[item.user] = [];
+            perPetugas[item.user].push(item);
+        });
+
+        let noPetugas = 1;
+        Object.keys(perPetugas).forEach(nama => {
+            hasil += `\n${noPetugas}. 👤 ${nama}\n`;
+            perPetugas[nama].forEach(item => {
+                let sesi = buatSesi(item.kpList);
+                sesi.forEach(s => {
+                    hasil += `   🗺 ${item.segment}\n`;
+                    hasil += `   📍 KP ${formatKP(s.awal)} → ${formatKP(s.akhir)} (${s.titik} titik)\n`;
+                    hasil += `   🕐 Terakhir : ${item.waktuTerakhir}\n`;
+                });
+            });
+            noPetugas++;
+        });
+
+        // Rekap finding/pelanggaran seluruh area
+        let dataFinding = laporan.filter(x => x.analisaROW === "Ada Pelanggaran");
+
+        hasil += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        hasil += `🚨 FINDING/PELANGGARAN SELURUH AREA\n`;
+        hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+
+        if (dataFinding.length === 0) {
+            hasil += `\n   ✅ Tidak ada finding/pelanggaran\n`;
+        } else {
+            dataFinding.forEach((d, i) => {
+                hasil += `\n${i+1}. 👤 ${d.user}\n`;
+                hasil += `   🗺 ${d.segment} — KP ${d.kp}\n`;
+                hasil += `   🚨 Jenis  : ${d.jenisPelanggaran || "-"}\n`;
+                hasil += `   📝 Detail : ${d.detailPelanggaran || "-"}\n`;
+            });
+        }
+
+        return kirimPesan(chatId, hasil);
+    }
+
+    // ==================
     // PINDAH SEGMENT
     // ==================
     if (text === "🔀 Pindah Segment") {
@@ -501,7 +574,7 @@ Setelah semua media terkirim, ketik keterangan detail kondisi hujan.`);
     // ==================
     // DASHBOARD
     // ==================
-    if (text === "📊 Dashboard Live Pengawasan Jalur ROW") {
+    if (text === "📊 Dashboard Live Penyisiran Jalur ROW") {
         if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
 
         let totalMeter = 0;
@@ -547,7 +620,7 @@ Setelah semua media terkirim, ketik keterangan detail kondisi hujan.`);
             }).join("\n");
 
         return kirimPesan(chatId,
-`📊 DASHBOARD LIVE PENGAWASAN JALUR PIPA ROW PERTAMINA GAS\nOperation Rokan Area\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📏 Jumlah Total Kilometer Pipa Pengawasan Jalur Pipa Row - Pertagas Ora  = [[ ${totalMeter} meter ]]
+`📊 DASHBOARD LIVE PENYISIRAN JALUR PIPA ROW PERTAMINA GAS\nOperation Rokan Area\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📏 Jumlah Total Kilometer Pipa Penyisiran Jalur Pipa Row - Pertagas Ora  = [[ ${totalMeter} meter ]]
 
 \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ Jalur ROW Aman       :
 ${infoAman}
@@ -748,7 +821,7 @@ ${infoHujan}`);
     // ==================
     // DOKUMENTASI
     // ==================
-    if (text === "📷 Dokumentasi Pengawasan Jalur ROW") {
+    if (text === "📷 Dokumentasi Penyisiran Jalur ROW") {
         return kirimPesan(chatId, "Pilih Segment:", {
             reply_markup: {
                 keyboard: [
@@ -831,7 +904,7 @@ ${infoHujan}`);
     // ==================
     // EXPORT SEMUA — PETUGAS vs ADMIN
     // ==================
-    if (text === "📤 Export Pengawasan Jalur ROW") {
+    if (text === "📤 Export Penyisiran Jalur ROW") {
         if (laporan.length === 0 && laporanHujan.length === 0) return kirimPesan(chatId, "❌ Belum ada data");
 
         let role = verifiedUsers[chatId].role;
@@ -840,7 +913,7 @@ ${infoHujan}`);
         if (role === "petugas") {
             let dataKu = laporan.filter(d => d.user === nama);
             let dataHujanKu = laporanHujan.filter(d => d.user === nama);
-            if (dataKu.length === 0 && dataHujanKu.length === 0) return kirimPesan(chatId, "❌ Belum ada data pengawasanmu");
+            if (dataKu.length === 0 && dataHujanKu.length === 0) return kirimPesan(chatId, "❌ Belum ada data penyisiranmu");
 
             await kirimPesan(chatId, `⏳ Membuat file Excel milik ${nama}...`);
             await exportExcelSatuPetugas(chatId, nama);
@@ -1082,10 +1155,11 @@ async function prosesHasilFoto(chatId) {
         reply_markup: {
             keyboard: [
                 ["📷 Lanjut Dokumentasi"],
-                ["📋 History Pengawasan"],
+                ["📋 History Penyisiran"],
+                ["🗺 Real-Time Penyisiran All Area"],
                 ["🔀 Pindah Segment"],
                 ["🌧 Report Hujan"],
-                ["📤 Export Pengawasan Jalur ROW"],
+                ["📤 Export Penyisiran Jalur ROW"],
                 ["🚪 Log out"]
             ],
             resize_keyboard: true
@@ -1099,8 +1173,8 @@ async function prosesHasilFoto(chatId) {
 async function buatExcelPetugas(petugas, tanggal) {
     const workbook = new ExcelJS.Workbook();
 
-    // Sheet Laporan Pengawasan
-    const sheet = workbook.addWorksheet("Laporan Pengawasan");
+    // Sheet Laporan Penyisiran
+    const sheet = workbook.addWorksheet("Laporan Penyisiran");
 
     sheet.columns = [
         { header: "No", key: "no", width: 5 },
@@ -1175,7 +1249,6 @@ async function buatExcelPetugas(petugas, tanggal) {
     sheetHujan.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
     sheetHujan.getRow(1).height = 28;
 
-    // Set header di baris 2
     sheetHujan.getRow(2).values = [
         'No', 'Waktu', 'Koordinat', 'Google Maps', 'Keterangan',
         'Foto 1', 'Foto 2', 'Foto 3', 'Foto 4', 'Foto 5', 'Jumlah Media'
@@ -1228,7 +1301,6 @@ async function buatExcelPetugas(petugas, tanggal) {
             cellMaps.font = { color: { argb: 'FF0070C0' }, underline: true };
         }
 
-        // Embed foto hujan (hanya yang bertipe foto, skip video)
         const fotoHujan = (d.media || []).filter(m => m && m.type === 'foto' && m.path);
         for (let fIdx = 0; fIdx < Math.min(fotoHujan.length, 5); fIdx++) {
             await embedFoto(workbook, sheetHujan, fotoHujan[fIdx].path, 5 + fIdx, rowNum - 1);
@@ -1583,4 +1655,4 @@ function formatKP(totalMeter) {
     return `${km}+${meter.toString().padStart(3,'0')}`;
 }
 
-console.log("🔥 BOT SURVEILLANCE PRO SIAP 🚀");
+console.log("🔥 BOT PENYISIRAN PRO SIAP 🚀");
