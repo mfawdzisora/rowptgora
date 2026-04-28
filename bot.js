@@ -160,12 +160,20 @@ function hitungMeterSesi(sesi) {
 // ==================
 // RESET JAM 12 MALAM
 // ==================
-function jadwalReset() {
-    const now = new Date();
-    const besok = new Date();
-    besok.setDate(now.getDate() + 1);
-    besok.setHours(0, 0, 0, 0);
-    const selisih = besok - now;
+const now = new Date();
+
+// ambil waktu WIB
+const nowWIB = new Date(now.toLocaleString("en-US", {
+    timeZone: "Asia/Jakarta"
+}));
+
+// target jam 00:00 WIB besok
+const besokWIB = new Date(nowWIB);
+besokWIB.setDate(nowWIB.getDate() + 1);
+besokWIB.setHours(0, 0, 0, 0);
+
+// hitung selisih waktu
+const selisih = besokWIB.getTime() - nowWIB.getTime();
 
     setTimeout(() => {
         console.log("🔄 RESET DATA TENGAH MALAM...");
