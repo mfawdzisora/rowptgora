@@ -547,7 +547,7 @@ Setelah semua media terkirim, ketik keterangan detail kondisi hujan.`);
             }).join("\n");
 
         return kirimPesan(chatId,
-`📊  DASHBOARD  LIVE  PENGAWASAN\n     JALUR  PIPA  ROW  PERTAMINA GAS\n       O p e r a t i o n  R o k a n  A r e a \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📏 Jumlah Total Kilometer Pipa Pengawasan Jalur Pipa Row - Pertagas Ora  = [[ ${totalMeter} meter ]]
+`📊  DASHBOARD  LIVE  PENGAWASAN\n     JALUR  PIPA  ROW  PERTAMINA GAS\n       O p e r a t i o n   R o k a n   A r e a \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📏 Jumlah Total Kilometer Pipa Pengawasan Jalur Pipa Row - Pertagas Ora  = [[ ${totalMeter} meter ]]
 
 \n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ Jalur ROW Aman       :
 ${infoAman}
