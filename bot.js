@@ -162,32 +162,46 @@ function hitungMeterSesi(sesi) {
 // ==================
 function jadwalReset() {
     const now = new Date();
-    const besok = new Date();
-    besok.setDate(now.getDate() + 1);
-    besok.setHours(0, 0, 0, 0);
-    const selisih = besok - now;
+    
+    // Hitung jam 00:00 WIB berikutnya (WIB = UTC+7)
+    // 00:00 WIB = 17:00 UTC hari sebelumnya
+    const nowUTC = now.getTime();
+    const wibOffset = 7 * 60 * 60 * 1000; // UTC+7 dalam ms
+    
+    const nowWIB = new Date(nowUTC + wibOffset);
+    
+    // Besok jam 00:00 WIB
+    const besokWIB = new Date(nowWIB);
+    besokWIB.setUTCDate(nowWIB.getUTCDate() + 1);
+    besokWIB.setUTCHours(0, 0, 0, 0);
+    
+    // Konversi balik ke UTC untuk setTimeout
+    const targetUTC = besokWIB.getTime() - wibOffset;
+    const selisih = targetUTC - nowUTC;
 
     setTimeout(() => {
-        console.log("🔄 RESET DATA TENGAH MALAM...");
-        const backupFile = path.join(__dirname, `backup_${getTanggal()}.json`);
+        const tanggalBackup = nowWIB.toISOString().slice(0, 10); // YYYY-MM-DD WIB
+        console.log("🔄 RESET DATA TENGAH MALAM WIB...");
+        const backupFile = path.join(__dirname, `backup_${tanggalBackup}.json`);
         fs.writeFileSync(backupFile, JSON.stringify({ laporan, antrian, laporanHujan }, null, 2));
         laporan = [];
         antrian = [];
         laporanHujan = [];
         userState = {};
         saveData();
-        console.log("✅ Data berhasil direset");
+        console.log("✅ Data berhasil direset (WIB)");
         jadwalReset();
     }, selisih);
 
-    console.log(`⏰ Reset dijadwalkan dalam ${Math.round(selisih/1000/60)} menit`);
+    const menitLagi = Math.round(selisih / 1000 / 60);
+    console.log(`⏰ Reset WIB dijadwalkan dalam ${menitLagi} menit`);
 }
 
-jadwalReset();
-
 function getTanggal() {
-    let d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    // Pakai waktu WIB (UTC+7)
+    const wibOffset = 7 * 60 * 60 * 1000;
+    const d = new Date(Date.now() + wibOffset);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
 
 // ==================
