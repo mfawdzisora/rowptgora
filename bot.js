@@ -632,8 +632,8 @@ ${infoHujan}`);
 Pilih tindakan:`, {
             reply_markup: {
                 keyboard: [
-                    ["📥 Export Excel Grafik Penyisiran"],
-                    ["🌐 Buka Dashboard Monitoring Web"],
+                    ["📥 Export Data Penyisiran"],
+                    ["🌐 Buka Grafik Monitoring Web"],
                     ["🔙 Kembali Menu Utama"]
                 ],
                 resize_keyboard: true
@@ -644,7 +644,7 @@ Pilih tindakan:`, {
     // ==================
     // EXPORT EXCEL GRAFIK — SEMUA CREW, TANPA FOTO  ← BARU
     // ==================
-    if (text === "📥 Export Excel Grafik Penyisiran") {
+    if (text === "📥 Export Data Penyisiran") {
         if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
         if (laporan.length === 0) return kirimPesan(chatId, "❌ Belum ada data penyisiran");
 
@@ -666,7 +666,7 @@ Mohon tunggu...`);
 
 Cara pakai:
 1. Simpan file Excel tersebut
-2. Tekan tombol 🌐 Buka Dashboard Monitoring Web
+2. Tekan tombol 🌐 Buka Grafik Monitoring Web
 3. Klik Import Excel dan pilih file tadi
 4. Grafik penyisiran semua crew akan tampil`);
             setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 30000);
@@ -678,36 +678,27 @@ Cara pakai:
     }
 
     // ==================
-    // KIRIM LINK DASHBOARD WEB  ← BARU
+    // BUKA WEB  ← BARU
     // ==================
-    if (text === "🌐 Buka Dashboard Monitoring Web") {
-        if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
+   if (text === "🌐 Buka Grafik Monitoring Web") {
+    if (verifiedUsers[chatId].role !== "admin") 
+        return kirimPesan(chatId, "❌ Akses ditolak");
 
-        // Kirim file HTML dashboard langsung ke chat
-        const htmlPath = path.join(__dirname, 'monitoring_jalur_ROW.html');
-        if (fs.existsSync(htmlPath)) {
-            await kirimPesan(chatId,
-`🌐 DASHBOARD MONITORING ROW
+    const url = "https://mfawdzisora.github.io/grafikrow/ptg.html";
 
-Berikut file HTML dashboard monitoring.
-Buka di browser lalu import file Excel Grafik yang sudah di-export.`);
-            await kirimDokumen(chatId, htmlPath);
-        } else {
-            await kirimPesan(chatId,
-`🌐 DASHBOARD MONITORING ROW
+    return kirimPesan(chatId,
+`🌐 GRAFIK MONITORING ROW
 
-File dashboard tidak ditemukan di server.
-Pastikan file monitoring_jalur_ROW.html ada di folder bot.
+Klik link di bawah untuk buka dashboard:
 
-Cara pakai dashboard:
-1. Export Excel Grafik terlebih dahulu
-2. Buka file monitoring_jalur_ROW.html di browser
-3. Klik 📂 Import Excel
-4. Pilih file penyisiran_${getTanggal()}.xlsx
-5. Grafik akan tampil otomatis`);
+${url}`, {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "🌐 Buka Dashboard", url: url }]
+            ]
         }
-        return;
-    }
+    });
+}
 
     // ==================
     // DATA PETUGAS
