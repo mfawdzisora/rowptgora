@@ -132,7 +132,7 @@ async function downloadVideo(fileId, retry = 3) {
 }
 
 // ==================
-// EMBED FOTO KE EXCEL — LANGSUNG TANPA RESIZE
+// EMBED FOTO KE EXCEL
 // ==================
 async function embedFoto(workbook, sheet, fotoPath, colIndex, rowIndex) {
     try {
@@ -162,39 +162,28 @@ function hitungMeterSesi(sesi) {
 // ==================
 function jadwalReset() {
     const now = new Date();
-
-    const nowWIB = new Date(now.toLocaleString("en-US", {
-        timeZone: "Asia/Jakarta"
-    }));
-
+    const nowWIB = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
     const besokWIB = new Date(nowWIB);
     besokWIB.setDate(nowWIB.getDate() + 1);
     besokWIB.setHours(0, 0, 0, 0);
-
     const selisih = besokWIB.getTime() - nowWIB.getTime();
 
     setTimeout(() => {
         console.log("🔄 RESET DATA TENGAH MALAM WIB...");
-
         const backupFile = path.join(__dirname, `backup_${getTanggal()}.json`);
         fs.writeFileSync(backupFile, JSON.stringify({ laporan, antrian, laporanHujan }, null, 2));
-
         laporan = [];
         antrian = [];
         laporanHujan = [];
         userState = {};
-
         saveData();
-
         console.log("✅ Data berhasil direset");
-
-        jadwalReset(); // ulang lagi
+        jadwalReset();
     }, selisih);
 
     console.log(`⏰ Reset dijadwalkan dalam ${Math.round(selisih/1000/60)} menit`);
 }
 
-// jalankan pertama kali
 jadwalReset();
 
 function getTanggal() {
@@ -245,6 +234,7 @@ function showMenu(chatId) {
     if (role === "admin") {
         menu.push(["📤 Export Penyisiran Jalur ROW"]);
         menu.push(["📊 Dashboard Live Penyisiran Jalur ROW"]);
+        menu.push(["📈 Lihat Grafik Penyisiran"]);   // ← MENU BARU
         menu.push(["👷 Data Petugas Jalur ROW"]);
         menu.push(["🌿 Data Jalur ROW Bersemak"]);
         menu.push(["🚧 Data Finding/Pelanggaran Jalur ROW"]);
@@ -274,9 +264,6 @@ bot.on('location', async (msg) => {
     const lat = msg.location.latitude;
     const lon = msg.location.longitude;
 
-    // ==================
-    // LOKASI UNTUK LAPORAN HUJAN
-    // ==================
     if (userState[chatId].mode === "tunggu_lokasi_hujan") {
         userState[chatId].koordinatHujan = { lat, lon };
         await kirimPesan(chatId, `📍 Lokasi diterima ✅\n🌐 ${lat}, ${lon}\n\n⏳ Menyimpan laporan hujan...`);
@@ -284,7 +271,6 @@ bot.on('location', async (msg) => {
     }
 
     userState[chatId].koordinat = { lat, lon };
-
     await kirimPesan(chatId, `📍 Lokasi diterima ✅\n🌐 ${lat}, ${lon}\n\n⏳ Menyimpan data...`);
     userState[chatId].mode = null;
     return prosesHasilFoto(chatId);
@@ -415,11 +401,9 @@ bot.on('message', async (msg) => {
             let kpList = rekapSegment[seg];
             let titik = kpList.length;
             totalTitikAll += titik;
-
             let sesi = buatSesi(kpList);
             let meterSegTotal = hitungMeterSesi(sesi);
             totalMeterAll += meterSegTotal;
-
             hasil += `\n🗺 ${seg}\n`;
             hasil += `   📊 Total : ${titik} titik / ${meterSegTotal} meter\n`;
             sesi.forEach(s => {
@@ -473,38 +457,27 @@ bot.on('message', async (msg) => {
     }
 
     // ==================
-    // REAL-TIME PENYISIRAN ALL AREA (PETUGAS)
+    // REAL-TIME PENYISIRAN ALL AREA
     // ==================
     if (text === "🗺 Real-Time Penyisiran All Area") {
         if (laporan.length === 0) return kirimPesan(chatId, "❌ Belum ada data penyisiran dari petugas manapun");
 
-        // Rekap per petugas per segment
         let rekapPetugas = {};
         laporan.forEach(d => {
             let key = `${d.user}||${d.segment}`;
             if (!rekapPetugas[key]) {
-                rekapPetugas[key] = {
-                    user: d.user,
-                    segment: d.segment,
-                    kpList: [],
-                    waktuTerakhir: d.waktu
-                };
+                rekapPetugas[key] = { user: d.user, segment: d.segment, kpList: [], waktuTerakhir: d.waktu };
             }
             rekapPetugas[key].kpList.push(d.kp);
-            // Simpan waktu paling akhir
             rekapPetugas[key].waktuTerakhir = d.waktu;
         });
 
         let hasil = `🗺 REAL-TIME PENYISIRAN ALL AREA\n`;
-       hasil += `📅 ${new Date().toLocaleString('id-ID', {
-    timeZone: 'Asia/Jakarta'
-})}\n`;
+        hasil += `📅 ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n`;
         hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
         hasil += `👷 AKTIVITAS PENYISIRAN PETUGAS\n`;
         hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
-        // Kelompokkan per petugas
         let perPetugas = {};
         Object.values(rekapPetugas).forEach(item => {
             if (!perPetugas[item.user]) perPetugas[item.user] = [];
@@ -525,9 +498,7 @@ bot.on('message', async (msg) => {
             noPetugas++;
         });
 
-        // Rekap finding/pelanggaran seluruh area
         let dataFinding = laporan.filter(x => x.analisaROW === "Ada Pelanggaran");
-
         hasil += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
         hasil += `🚨 FINDING/PELANGGARAN SELURUH AREA\n`;
         hasil += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -650,6 +621,95 @@ ${infoHujan}`);
     }
 
     // ==================
+    // MENU LIHAT GRAFIK PENYISIRAN (ADMIN)  ← BARU
+    // ==================
+    if (text === "📈 Lihat Grafik Penyisiran") {
+        if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
+
+        return kirimPesan(chatId,
+`📈 GRAFIK PENYISIRAN JALUR ROW
+
+Pilih tindakan:`, {
+            reply_markup: {
+                keyboard: [
+                    ["📥 Export Excel Grafik Penyisiran"],
+                    ["🌐 Buka Dashboard Monitoring Web"],
+                    ["🔙 Kembali Menu Utama"]
+                ],
+                resize_keyboard: true
+            }
+        });
+    }
+
+    // ==================
+    // EXPORT EXCEL GRAFIK — SEMUA CREW, TANPA FOTO  ← BARU
+    // ==================
+    if (text === "📥 Export Excel Grafik Penyisiran") {
+        if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
+        if (laporan.length === 0) return kirimPesan(chatId, "❌ Belum ada data penyisiran");
+
+        await kirimPesan(chatId,
+`⏳ Membuat file Excel Grafik Penyisiran...
+
+📊 Total data : ${laporan.length} titik
+👷 Total crew : ${[...new Set(laporan.map(d=>d.user))].length} orang
+
+Mohon tunggu...`);
+
+        try {
+            const filePath = await buatExcelGrafik();
+            await kirimDokumen(chatId, filePath);
+            await kirimPesan(chatId,
+`✅ File Excel Grafik berhasil dikirim!
+
+📄 penyisiran_${getTanggal()}.xlsx
+
+Cara pakai:
+1. Simpan file Excel tersebut
+2. Tekan tombol 🌐 Buka Dashboard Monitoring Web
+3. Klik Import Excel dan pilih file tadi
+4. Grafik penyisiran semua crew akan tampil`);
+            setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 30000);
+        } catch (err) {
+            console.error("Export Grafik error:", err);
+            kirimPesan(chatId, "❌ Gagal export Excel Grafik: " + err.message);
+        }
+        return;
+    }
+
+    // ==================
+    // KIRIM LINK DASHBOARD WEB  ← BARU
+    // ==================
+    if (text === "🌐 Buka Dashboard Monitoring Web") {
+        if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
+
+        // Kirim file HTML dashboard langsung ke chat
+        const htmlPath = path.join(__dirname, 'monitoring_jalur_ROW.html');
+        if (fs.existsSync(htmlPath)) {
+            await kirimPesan(chatId,
+`🌐 DASHBOARD MONITORING ROW
+
+Berikut file HTML dashboard monitoring.
+Buka di browser lalu import file Excel Grafik yang sudah di-export.`);
+            await kirimDokumen(chatId, htmlPath);
+        } else {
+            await kirimPesan(chatId,
+`🌐 DASHBOARD MONITORING ROW
+
+File dashboard tidak ditemukan di server.
+Pastikan file monitoring_jalur_ROW.html ada di folder bot.
+
+Cara pakai dashboard:
+1. Export Excel Grafik terlebih dahulu
+2. Buka file monitoring_jalur_ROW.html di browser
+3. Klik 📂 Import Excel
+4. Pilih file penyisiran_${getTanggal()}.xlsx
+5. Grafik akan tampil otomatis`);
+        }
+        return;
+    }
+
+    // ==================
     // DATA PETUGAS
     // ==================
     if (text === "👷 Data Petugas Jalur ROW") {
@@ -672,7 +732,6 @@ ${infoHujan}`);
         let hasil = "👷 Data Petugas Jalur ROW\n\n";
         Object.keys(rekap).forEach(nama => {
             let data = rekap[nama];
-
             let totalMeterPetugas = 0;
             Object.values(data.segments).forEach(kpList => {
                 let sesi = buatSesi(kpList);
@@ -785,7 +844,7 @@ ${infoHujan}`);
     }
 
     // ==================
-    // EXPORT EXCEL DATA BERSEMAK (ADMIN)
+    // EXPORT EXCEL DATA BERSEMAK
     // ==================
     if (text === "📥 Export Data Bersemak") {
         if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
@@ -809,7 +868,7 @@ ${infoHujan}`);
     }
 
     // ==================
-    // EXPORT EXCEL DATA PELANGGARAN (ADMIN)
+    // EXPORT EXCEL DATA PELANGGARAN
     // ==================
     if (text === "📥 Export Data Finding/Pelanggaran") {
         if (verifiedUsers[chatId].role !== "admin") return kirimPesan(chatId, "❌ Akses ditolak");
@@ -916,7 +975,7 @@ ${infoHujan}`);
     }
 
     // ==================
-    // EXPORT SEMUA — PETUGAS vs ADMIN
+    // EXPORT SEMUA
     // ==================
     if (text === "📤 Export Penyisiran Jalur ROW") {
         if (laporan.length === 0 && laporanHujan.length === 0) return kirimPesan(chatId, "❌ Belum ada data");
@@ -928,23 +987,19 @@ ${infoHujan}`);
             let dataKu = laporan.filter(d => d.user === nama);
             let dataHujanKu = laporanHujan.filter(d => d.user === nama);
             if (dataKu.length === 0 && dataHujanKu.length === 0) return kirimPesan(chatId, "❌ Belum ada data penyisiranmu");
-
             await kirimPesan(chatId, `⏳ Membuat file Excel milik ${nama}...`);
             await exportExcelSatuPetugas(chatId, nama);
-
         } else if (role === "admin") {
             let daftarPetugas = [...new Set([
                 ...laporan.map(d => d.user),
                 ...laporanHujan.map(d => d.user)
             ])];
-
             await kirimPesan(chatId,
 `⏳ Membuat file Excel untuk ${daftarPetugas.length} petugas:
 
 ${daftarPetugas.map((p, i) => `${i+1}. ${p}`).join("\n")}
 
 Mohon tunggu...`);
-
             await exportExcelSemuaPetugas(chatId);
         }
     }
@@ -986,15 +1041,32 @@ bot.on('photo', async (msg) => {
     const fileId = msg.photo[msg.photo.length - 1].file_id;
     const filePath = await downloadFoto(fileId);
 
+    // ==================
+    // LOGIKA BARU: Jika foto gagal diunduh (tidak ada file valid)
+    // minta petugas ulang dokumentasi di KP yang sama  ← BARU
+    // ==================
     if (!filePath) {
-        userState[chatId].fotoCount++;
-        userState[chatId].photos.push(null);
-        await kirimPesan(chatId, `⚠️ Foto ke-${userState[chatId].fotoCount} gagal tersimpan\n📌 Tetap dihitung`);
-    } else {
-        userState[chatId].fotoCount++;
-        userState[chatId].photos.push(filePath);
-        await kirimPesan(chatId, `📸 Foto ke-${userState[chatId].fotoCount} tersimpan ✅`);
+        await kirimPesan(chatId,
+`⚠️ FOTO GAGAL TERSIMPAN
+
+Foto ke-${userState[chatId].fotoCount + 1} tidak berhasil diunduh ke server.
+
+Dokumentasi KP ${formatKP(userState[chatId].kp)} tidak dapat disimpan tanpa foto yang valid.
+
+🔄 Silakan ulangi pengiriman foto untuk KP ini:`, {
+            reply_markup: {
+                keyboard: [
+                    [{ text: "🔄 Ambil Foto Ulang" }]
+                ],
+                resize_keyboard: true
+            }
+        });
+        return;
     }
+
+    userState[chatId].fotoCount++;
+    userState[chatId].photos.push(filePath);
+    await kirimPesan(chatId, `📸 Foto ke-${userState[chatId].fotoCount} tersimpan ✅`);
 
     const count = userState[chatId].fotoCount;
 
@@ -1045,7 +1117,6 @@ bot.on('photo', async (msg) => {
 bot.on('video', async (msg) => {
     const chatId = msg.chat.id;
 
-    // Handle video untuk laporan hujan
     if (userState[chatId]?.modeHujan === "tunggu_media_hujan" || userState[chatId]?.mode === "input_keterangan_hujan") {
         await kirimPesan(chatId, `⏳ Mengunduh video...`);
         const fileId = msg.video.file_id;
@@ -1070,9 +1141,7 @@ bot.on('video', async (msg) => {
 // PROSES HASIL LAPORAN HUJAN
 // ==================
 async function prosesHasilHujan(chatId) {
-   const waktu = new Date().toLocaleString('id-ID', {
-    timeZone: 'Asia/Jakarta'
-});
+    const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const koordinat = userState[chatId].koordinatHujan;
     const keterangan = userState[chatId].keteranganHujan || "-";
     const mediaList = userState[chatId].mediaHujan.filter(m => m !== null);
@@ -1099,7 +1168,6 @@ async function prosesHasilHujan(chatId) {
 📸 Media       : ${data.mediaCount} file
 📝 Keterangan  : ${data.keterangan}`);
 
-    // Reset state hujan
     userState[chatId].modeHujan = null;
     userState[chatId].mediaHujan = [];
     userState[chatId].mediaHujanCount = 0;
@@ -1115,8 +1183,34 @@ async function prosesHasilHujan(chatId) {
 // ==================
 async function prosesHasilFoto(chatId) {
     const count = userState[chatId].fotoCount;
-    let analisaROW, keterangan, emoji;
 
+    // ==================
+    // VALIDASI FOTO — jika tidak ada foto valid sama sekali, tolak simpan  ← BARU
+    // ==================
+    const fotoValid = userState[chatId].photos.filter(p => p && fs.existsSync(p));
+    if (fotoValid.length === 0) {
+        await kirimPesan(chatId,
+`❌ DOKUMENTASI DITOLAK
+
+Tidak ada foto yang valid tersimpan untuk KP ${formatKP(userState[chatId].kp)}.
+Data tidak dapat disimpan tanpa foto.
+
+🔄 Silakan ulangi dokumentasi di KP ini:`, {
+            reply_markup: {
+                keyboard: [
+                    [{ text: "🔄 Ambil Foto Ulang" }]
+                ],
+                resize_keyboard: true
+            }
+        });
+        // Reset foto tapi pertahankan segment & KP
+        userState[chatId].fotoCount = 0;
+        userState[chatId].photos = [];
+        userState[chatId].koordinat = null;
+        return;
+    }
+
+    let analisaROW, keterangan, emoji;
     if (count === 3) {
         analisaROW = "Tidak Ada Temuan"; keterangan = "Jalur Row Terpantau Aman"; emoji = "✅";
     } else if (count === 4) {
@@ -1126,9 +1220,7 @@ async function prosesHasilFoto(chatId) {
     }
 
     const koordinat = userState[chatId].koordinat;
-  const waktu = new Date().toLocaleString('id-ID', {
-    timeZone: 'Asia/Jakarta'
-});
+    const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
     const data = {
         user: verifiedUsers[chatId].name,
@@ -1138,7 +1230,7 @@ async function prosesHasilFoto(chatId) {
         jenisPelanggaran: userState[chatId].jenisPelanggaran || "-",
         detailPelanggaran: userState[chatId].detailPelanggaran || "-",
         koordinat: koordinat || null,
-        photos: userState[chatId].photos.filter(p => p !== null),
+        photos: fotoValid,  // hanya foto yang valid
         waktu
     };
 
@@ -1158,7 +1250,7 @@ async function prosesHasilFoto(chatId) {
 📍 Segment     : ${data.segment}
 📏 KP          : ${data.kp}
 📅 Waktu       : ${data.waktu}
-📸 Jumlah Foto : ${count} foto${infoKoord}
+📸 Jumlah Foto : ${fotoValid.length} foto${infoKoord}
 
 🌿 Analisa ROW : ${data.analisaROW}${infoTambahan}`);
 
@@ -1186,12 +1278,122 @@ async function prosesHasilFoto(chatId) {
 }
 
 // ==================
+// BUAT EXCEL GRAFIK — SEMUA CREW, TANPA FOTO  ← BARU
+// ==================
+async function buatExcelGrafik() {
+    const tanggal = getTanggal();
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Laporan Penyisiran");
+
+    // Kolom sesuai format yang dibaca oleh monitoring_jalur_ROW.html
+    sheet.columns = [
+        { header: "No",               key: "no",               width: 5  },
+        { header: "Segment",          key: "segment",          width: 14 },
+        { header: "KP",               key: "kp",               width: 10 },
+        { header: "Analisa ROW",      key: "analisaROW",       width: 20 },
+        { header: "Jenis Pelanggaran",key: "jenisPelanggaran", width: 20 },
+        { header: "Detail Pelanggaran",key:"detailPelanggaran",width: 30 },
+        { header: "Koordinat",        key: "koordinat",        width: 25 },
+        { header: "Waktu",            key: "waktu",            width: 20 },
+        { header: "Petugas",          key: "user",             width: 18 }
+    ];
+
+    // Header styling
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1565C0' } };
+    headerRow.height = 22;
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Urutkan laporan: per segment, lalu per KP
+    const sorted = [...laporan].sort((a, b) => {
+        if (a.segment < b.segment) return -1;
+        if (a.segment > b.segment) return 1;
+        return parseKP(a.kp) - parseKP(b.kp);
+    });
+
+    sorted.forEach((d, idx) => {
+        const rowNum = idx + 2;
+        const koordinatStr = d.koordinat ? `${d.koordinat.lat}, ${d.koordinat.lon}` : "-";
+
+        sheet.addRow({
+            no: idx + 1,
+            segment: d.segment,
+            kp: d.kp,
+            analisaROW: d.analisaROW,
+            jenisPelanggaran: d.jenisPelanggaran || "-",
+            detailPelanggaran: d.detailPelanggaran || "-",
+            koordinat: koordinatStr,
+            waktu: d.waktu,
+            user: d.user
+        });
+
+        // Warna baris sesuai status
+        let bgColor = idx % 2 === 0 ? 'FFE3F2FD' : 'FFBBDEFB'; // biru muda selang-seling default
+        if (d.analisaROW === "Ada Pelanggaran") bgColor = 'FFFFC7CE';       // merah muda
+        else if (d.analisaROW === "Bersemak")    bgColor = 'FFFFEB9C';       // kuning
+
+        sheet.getRow(rowNum).eachCell(cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+            cell.alignment = { vertical: 'middle', wrapText: false };
+            cell.border = {
+                top:    { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                left:   { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                right:  { style: 'thin', color: { argb: 'FFD0D0D0' } }
+            };
+        });
+    });
+
+    // Sheet ringkasan per crew
+    const sheetRekap = workbook.addWorksheet("Rekap Per Crew");
+    sheetRekap.columns = [
+        { header: "Petugas",  key: "user",    width: 20 },
+        { header: "Segment",  key: "segment", width: 14 },
+        { header: "Total Titik", key: "titik", width: 14 },
+        { header: "Total Meter", key: "meter", width: 14 },
+        { header: "Rentang KP",  key: "rentang", width: 40 }
+    ];
+    const hdrRekap = sheetRekap.getRow(1);
+    hdrRekap.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hdrRekap.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1565C0' } };
+    hdrRekap.height = 22;
+
+    let perUser = {};
+    laporan.forEach(d => {
+        if (!perUser[d.user]) perUser[d.user] = {};
+        if (!perUser[d.user][d.segment]) perUser[d.user][d.segment] = [];
+        perUser[d.user][d.segment].push(d.kp);
+    });
+
+    let ri = 2;
+    Object.keys(perUser).forEach(user => {
+        Object.keys(perUser[user]).forEach(seg => {
+            let sesi = buatSesi(perUser[user][seg]);
+            let meter = hitungMeterSesi(sesi);
+            let rentang = sesi.map(s => `KP ${formatKP(s.awal)}-${formatKP(s.akhir)}`).join(", ");
+            sheetRekap.getRow(ri).values = [user, seg, perUser[user][seg].length, meter, rentang];
+            sheetRekap.getRow(ri).eachCell(cell => {
+                cell.alignment = { vertical: 'middle' };
+                cell.border = {
+                    top:    { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                    bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+                };
+            });
+            ri++;
+        });
+    });
+
+    const filePath = path.join(__dirname, `penyisiran_${tanggal}.xlsx`);
+    await workbook.xlsx.writeFile(filePath);
+    return filePath;
+}
+
+// ==================
 // BUAT EXCEL PER PETUGAS (DENGAN SHEET HUJAN)
 // ==================
 async function buatExcelPetugas(petugas, tanggal) {
     const workbook = new ExcelJS.Workbook();
-
-    // Sheet Laporan Penyisiran
     const sheet = workbook.addWorksheet("Laporan Penyisiran");
 
     sheet.columns = [
@@ -1275,17 +1477,7 @@ async function buatExcelPetugas(petugas, tanggal) {
     sheetHujan.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1565C0' } };
     sheetHujan.getRow(2).height = 22;
 
-    sheetHujan.getColumn(1).width = 5;
-    sheetHujan.getColumn(2).width = 22;
-    sheetHujan.getColumn(3).width = 28;
-    sheetHujan.getColumn(4).width = 18;
-    sheetHujan.getColumn(5).width = 40;
-    sheetHujan.getColumn(6).width = 22;
-    sheetHujan.getColumn(7).width = 22;
-    sheetHujan.getColumn(8).width = 22;
-    sheetHujan.getColumn(9).width = 22;
-    sheetHujan.getColumn(10).width = 22;
-    sheetHujan.getColumn(11).width = 15;
+    [5,22,28,18,40,22,22,22,22,22,15].forEach((w,i) => sheetHujan.getColumn(i+1).width = w);
 
     let dataHujanPertugas = laporanHujan.filter(d => d.user === petugas);
 
@@ -1295,15 +1487,9 @@ async function buatExcelPetugas(petugas, tanggal) {
         const koordinatStr = d.koordinat ? `${d.koordinat.lat}, ${d.koordinat.lon}` : "-";
 
         sheetHujan.getRow(rowNum).values = [
-            idx + 1,
-            d.waktu,
-            koordinatStr,
-            '',
-            d.keterangan || "-",
-            '', '', '', '', '',
-            d.mediaCount || 0
+            idx + 1, d.waktu, koordinatStr, '', d.keterangan || "-",
+            '', '', '', '', '', d.mediaCount || 0
         ];
-
         sheetHujan.getRow(rowNum).height = 85;
         sheetHujan.getRow(rowNum).eachCell(cell => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFE3F2FD' : 'FFBBDEFB' } };
@@ -1332,12 +1518,11 @@ async function buatExcelPetugas(petugas, tanggal) {
 }
 
 // ==================
-// BUAT EXCEL KHUSUS DATA BERSEMAK
+// BUAT EXCEL DATA BERSEMAK
 // ==================
 async function buatExcelBersemak() {
     const tanggal = getTanggal();
     const workbook = new ExcelJS.Workbook();
-
     const sheetRingkasan = workbook.addWorksheet("📊 Ringkasan Bersemak");
 
     sheetRingkasan.mergeCells('A1:F1');
@@ -1348,7 +1533,6 @@ async function buatExcelBersemak() {
     sheetRingkasan.getRow(1).height = 30;
 
     const data = laporan.filter(x => x.analisaROW === "Bersemak");
-
     let segBersemak = {};
     data.forEach(d => {
         if (!segBersemak[d.segment]) segBersemak[d.segment] = [];
@@ -1365,9 +1549,7 @@ async function buatExcelBersemak() {
 
     let totalTitik = data.length;
     let totalMeter = 0;
-    Object.values(segBersemak).forEach(kpList => {
-        totalMeter += hitungMeterSesi(buatSesi(kpList));
-    });
+    Object.values(segBersemak).forEach(kpList => { totalMeter += hitungMeterSesi(buatSesi(kpList)); });
 
     sheetRingkasan.getRow(3).values = ['', 'TOTAL TITIK BERSEMAK', '', totalTitik + ' titik', '', ''];
     sheetRingkasan.getRow(3).font = { bold: true };
@@ -1378,10 +1560,7 @@ async function buatExcelBersemak() {
     sheetRingkasan.getRow(6).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheetRingkasan.getRow(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F7A4D' } };
     sheetRingkasan.getRow(6).height = 20;
-    sheetRingkasan.getColumn(2).width = 18;
-    sheetRingkasan.getColumn(3).width = 18;
-    sheetRingkasan.getColumn(4).width = 18;
-    sheetRingkasan.getColumn(5).width = 35;
+    [18,18,18,35].forEach((w,i) => sheetRingkasan.getColumn(i+2).width = w);
 
     let rowIdx = 7;
     Object.keys(segBersemak).forEach(seg => {
@@ -1403,16 +1582,13 @@ async function buatExcelBersemak() {
     Object.keys(petugasBersemak).forEach(nama => {
         let dp = petugasBersemak[nama];
         let meterPetugas = 0;
-        Object.values(dp.segments).forEach(kpList => {
-            meterPetugas += hitungMeterSesi(buatSesi(kpList));
-        });
+        Object.values(dp.segments).forEach(kpList => { meterPetugas += hitungMeterSesi(buatSesi(kpList)); });
         sheetRingkasan.getRow(rowIdx).values = ['', nama, dp.titik, meterPetugas + ' meter', '', ''];
         sheetRingkasan.getRow(rowIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
         rowIdx++;
     });
 
     const sheetDetail = workbook.addWorksheet("📋 Detail Bersemak");
-
     sheetDetail.columns = [
         { header: "No", key: "no", width: 5 },
         { header: "Petugas", key: "user", width: 18 },
@@ -1436,32 +1612,24 @@ async function buatExcelBersemak() {
         const d = data[idx];
         const rowNum = idx + 2;
         const koordinatStr = d.koordinat ? `${d.koordinat.lat}, ${d.koordinat.lon}` : "-";
-
         sheetDetail.addRow({
-            no: idx + 1, user: d.user, segment: d.segment, kp: d.kp,
+            no: idx+1, user: d.user, segment: d.segment, kp: d.kp,
             koordinat: koordinatStr,
             maps: d.koordinat ? `https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}` : "-",
-            waktu: d.waktu,
-            foto1: "", foto2: "", foto3: "", foto4: ""
+            waktu: d.waktu, foto1:"", foto2:"", foto3:"", foto4:""
         });
-
         sheetDetail.getRow(rowNum).height = 85;
         sheetDetail.getRow(rowNum).eachCell(cell => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFE2EFDA' : 'FFF0FFF0' } };
-            cell.alignment = { vertical: 'middle', wrapText: true };
+            cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb: idx%2===0?'FFE2EFDA':'FFF0FFF0'} };
+            cell.alignment = { vertical:'middle', wrapText:true };
         });
-
         if (d.koordinat) {
             const cellMaps = sheetDetail.getRow(rowNum).getCell('maps');
-            cellMaps.value = {
-                text: "Buka Maps",
-                hyperlink: `https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}`
-            };
-            cellMaps.font = { color: { argb: 'FF0070C0' }, underline: true };
+            cellMaps.value = { text:"Buka Maps", hyperlink:`https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}` };
+            cellMaps.font = { color:{argb:'FF0070C0'}, underline:true };
         }
-
-        for (let fIdx = 0; fIdx < Math.min(d.photos.length, 4); fIdx++) {
-            await embedFoto(workbook, sheetDetail, d.photos[fIdx], 7 + fIdx, rowNum - 1);
+        for (let fIdx=0; fIdx<Math.min(d.photos.length,4); fIdx++) {
+            await embedFoto(workbook, sheetDetail, d.photos[fIdx], 7+fIdx, rowNum-1);
         }
     }
 
@@ -1471,12 +1639,11 @@ async function buatExcelBersemak() {
 }
 
 // ==================
-// BUAT EXCEL KHUSUS DATA PELANGGARAN
+// BUAT EXCEL DATA PELANGGARAN
 // ==================
 async function buatExcelPelanggaran() {
     const tanggal = getTanggal();
     const workbook = new ExcelJS.Workbook();
-
     const data = laporan.filter(x => x.analisaROW === "Ada Pelanggaran");
 
     let segPelanggaran = {};
@@ -1486,129 +1653,110 @@ async function buatExcelPelanggaran() {
     });
 
     let petugasPelanggaran = {};
-    data.forEach(d => {
-        if (!petugasPelanggaran[d.user]) petugasPelanggaran[d.user] = 0;
-        petugasPelanggaran[d.user]++;
-    });
+    data.forEach(d => { petugasPelanggaran[d.user] = (petugasPelanggaran[d.user]||0)+1; });
 
     let jenisPelanggaran = {};
     data.forEach(d => {
         let jenis = d.jenisPelanggaran || "Lainnya";
-        if (!jenisPelanggaran[jenis]) jenisPelanggaran[jenis] = 0;
-        jenisPelanggaran[jenis]++;
+        jenisPelanggaran[jenis] = (jenisPelanggaran[jenis]||0)+1;
     });
 
     const sheetRingkasan = workbook.addWorksheet("📊 Ringkasan Pelanggaran");
-
     sheetRingkasan.mergeCells('A1:F1');
     sheetRingkasan.getCell('A1').value = `LAPORAN DATA FINDING / PELANGGARAN JALUR ROW — ${tanggal}`;
-    sheetRingkasan.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
-    sheetRingkasan.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
-    sheetRingkasan.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+    sheetRingkasan.getCell('A1').font = { bold:true, size:14, color:{argb:'FFFFFFFF'} };
+    sheetRingkasan.getCell('A1').fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFC00000'} };
+    sheetRingkasan.getCell('A1').alignment = { horizontal:'center', vertical:'middle' };
     sheetRingkasan.getRow(1).height = 30;
-    sheetRingkasan.getColumn(2).width = 22;
-    sheetRingkasan.getColumn(3).width = 18;
-    sheetRingkasan.getColumn(4).width = 18;
-    sheetRingkasan.getColumn(5).width = 35;
+    [22,18,18,35].forEach((w,i)=>sheetRingkasan.getColumn(i+2).width=w);
 
-    sheetRingkasan.getRow(3).values = ['', 'TOTAL PELANGGARAN', '', data.length + ' temuan', '', ''];
-    sheetRingkasan.getRow(3).font = { bold: true };
+    sheetRingkasan.getRow(3).values = ['','TOTAL PELANGGARAN','',data.length+' temuan','',''];
+    sheetRingkasan.getRow(3).font = { bold:true };
 
-    sheetRingkasan.getRow(5).values = ['', 'SEGMENT', 'JUMLAH', 'KP', '', ''];
-    sheetRingkasan.getRow(5).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sheetRingkasan.getRow(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
+    sheetRingkasan.getRow(5).values = ['','SEGMENT','JUMLAH','KP','',''];
+    sheetRingkasan.getRow(5).font = { bold:true, color:{argb:'FFFFFFFF'} };
+    sheetRingkasan.getRow(5).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFC00000'} };
     sheetRingkasan.getRow(5).height = 20;
 
     let rowIdx = 6;
     Object.keys(segPelanggaran).forEach(seg => {
-        let kpList = segPelanggaran[seg].map(d => d.kp).join(", ");
-        sheetRingkasan.getRow(rowIdx).values = ['', seg, segPelanggaran[seg].length, kpList, '', ''];
-        sheetRingkasan.getRow(rowIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        let kpList = segPelanggaran[seg].map(d=>d.kp).join(", ");
+        sheetRingkasan.getRow(rowIdx).values = ['',seg,segPelanggaran[seg].length,kpList,'',''];
+        sheetRingkasan.getRow(rowIdx).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFC7CE'} };
         rowIdx++;
     });
 
-    rowIdx += 1;
-    sheetRingkasan.getRow(rowIdx).values = ['', 'PETUGAS', 'JUMLAH', '', '', ''];
-    sheetRingkasan.getRow(rowIdx).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sheetRingkasan.getRow(rowIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
+    rowIdx++;
+    sheetRingkasan.getRow(rowIdx).values = ['','PETUGAS','JUMLAH','','',''];
+    sheetRingkasan.getRow(rowIdx).font = { bold:true, color:{argb:'FFFFFFFF'} };
+    sheetRingkasan.getRow(rowIdx).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFC00000'} };
     sheetRingkasan.getRow(rowIdx).height = 20;
     rowIdx++;
-
     Object.keys(petugasPelanggaran).forEach(nama => {
-        sheetRingkasan.getRow(rowIdx).values = ['', nama, petugasPelanggaran[nama], '', '', ''];
-        sheetRingkasan.getRow(rowIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        sheetRingkasan.getRow(rowIdx).values = ['',nama,petugasPelanggaran[nama],'','',''];
+        sheetRingkasan.getRow(rowIdx).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFC7CE'} };
         rowIdx++;
     });
 
-    rowIdx += 1;
-    sheetRingkasan.getRow(rowIdx).values = ['', 'JENIS PELANGGARAN', 'JUMLAH', '', '', ''];
-    sheetRingkasan.getRow(rowIdx).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sheetRingkasan.getRow(rowIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
+    rowIdx++;
+    sheetRingkasan.getRow(rowIdx).values = ['','JENIS PELANGGARAN','JUMLAH','','',''];
+    sheetRingkasan.getRow(rowIdx).font = { bold:true, color:{argb:'FFFFFFFF'} };
+    sheetRingkasan.getRow(rowIdx).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFC00000'} };
     sheetRingkasan.getRow(rowIdx).height = 20;
     rowIdx++;
-
     Object.keys(jenisPelanggaran).forEach(jenis => {
-        sheetRingkasan.getRow(rowIdx).values = ['', jenis, jenisPelanggaran[jenis], '', '', ''];
-        sheetRingkasan.getRow(rowIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        sheetRingkasan.getRow(rowIdx).values = ['',jenis,jenisPelanggaran[jenis],'','',''];
+        sheetRingkasan.getRow(rowIdx).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFC7CE'} };
         rowIdx++;
     });
 
     const sheetDetail = workbook.addWorksheet("📋 Detail Pelanggaran");
-
     sheetDetail.columns = [
-        { header: "No", key: "no", width: 5 },
-        { header: "Petugas", key: "user", width: 18 },
-        { header: "Segment", key: "segment", width: 15 },
-        { header: "KP", key: "kp", width: 10 },
-        { header: "Jenis Pelanggaran", key: "jenisPelanggaran", width: 20 },
-        { header: "Detail Pelanggaran", key: "detailPelanggaran", width: 35 },
-        { header: "Koordinat", key: "koordinat", width: 28 },
-        { header: "Google Maps", key: "maps", width: 18 },
-        { header: "Waktu", key: "waktu", width: 20 },
-        { header: "Foto 1", key: "foto1", width: 22 },
-        { header: "Foto 2", key: "foto2", width: 22 },
-        { header: "Foto 3", key: "foto3", width: 22 },
-        { header: "Foto 4", key: "foto4", width: 22 },
-        { header: "Foto 5", key: "foto5", width: 22 }
+        { header:"No", key:"no", width:5 },
+        { header:"Petugas", key:"user", width:18 },
+        { header:"Segment", key:"segment", width:15 },
+        { header:"KP", key:"kp", width:10 },
+        { header:"Jenis Pelanggaran", key:"jenisPelanggaran", width:20 },
+        { header:"Detail Pelanggaran", key:"detailPelanggaran", width:35 },
+        { header:"Koordinat", key:"koordinat", width:28 },
+        { header:"Google Maps", key:"maps", width:18 },
+        { header:"Waktu", key:"waktu", width:20 },
+        { header:"Foto 1", key:"foto1", width:22 },
+        { header:"Foto 2", key:"foto2", width:22 },
+        { header:"Foto 3", key:"foto3", width:22 },
+        { header:"Foto 4", key:"foto4", width:22 },
+        { header:"Foto 5", key:"foto5", width:22 }
     ];
 
     const hdrDetail = sheetDetail.getRow(1);
-    hdrDetail.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    hdrDetail.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
+    hdrDetail.font = { bold:true, color:{argb:'FFFFFFFF'} };
+    hdrDetail.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFC00000'} };
     hdrDetail.height = 22;
 
-    for (let idx = 0; idx < data.length; idx++) {
+    for (let idx=0; idx<data.length; idx++) {
         const d = data[idx];
-        const rowNum = idx + 2;
+        const rowNum = idx+2;
         const koordinatStr = d.koordinat ? `${d.koordinat.lat}, ${d.koordinat.lon}` : "-";
-
         sheetDetail.addRow({
-            no: idx + 1, user: d.user, segment: d.segment, kp: d.kp,
-            jenisPelanggaran: d.jenisPelanggaran || "-",
-            detailPelanggaran: d.detailPelanggaran || "-",
-            koordinat: koordinatStr,
-            maps: d.koordinat ? `https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}` : "-",
-            waktu: d.waktu,
-            foto1: "", foto2: "", foto3: "", foto4: "", foto5: ""
+            no:idx+1, user:d.user, segment:d.segment, kp:d.kp,
+            jenisPelanggaran:d.jenisPelanggaran||"-",
+            detailPelanggaran:d.detailPelanggaran||"-",
+            koordinat:koordinatStr,
+            maps:d.koordinat?`https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}`:"-",
+            waktu:d.waktu, foto1:"",foto2:"",foto3:"",foto4:"",foto5:""
         });
-
         sheetDetail.getRow(rowNum).height = 85;
         sheetDetail.getRow(rowNum).eachCell(cell => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFFFC7CE' : 'FFFFEBEE' } };
-            cell.alignment = { vertical: 'middle', wrapText: true };
+            cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:idx%2===0?'FFFFC7CE':'FFFFEBEE'}};
+            cell.alignment={vertical:'middle',wrapText:true};
         });
-
         if (d.koordinat) {
             const cellMaps = sheetDetail.getRow(rowNum).getCell('maps');
-            cellMaps.value = {
-                text: "Buka Maps",
-                hyperlink: `https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}`
-            };
-            cellMaps.font = { color: { argb: 'FF0070C0' }, underline: true };
+            cellMaps.value = { text:"Buka Maps", hyperlink:`https://maps.google.com/?q=${d.koordinat.lat},${d.koordinat.lon}` };
+            cellMaps.font = { color:{argb:'FF0070C0'}, underline:true };
         }
-
-        for (let fIdx = 0; fIdx < Math.min(d.photos.length, 5); fIdx++) {
-            await embedFoto(workbook, sheetDetail, d.photos[fIdx], 9 + fIdx, rowNum - 1);
+        for (let fIdx=0; fIdx<Math.min(d.photos.length,5); fIdx++) {
+            await embedFoto(workbook, sheetDetail, d.photos[fIdx], 9+fIdx, rowNum-1);
         }
     }
 
@@ -1652,7 +1800,6 @@ async function exportExcelSemuaPetugas(chatId) {
         }
 
         await kirimPesan(chatId, `📊 Semua ${daftarPetugas.length} file Excel selesai dikirim ✅`);
-
     } catch (err) {
         console.error("Export error:", err);
         kirimPesan(chatId, "❌ Gagal export Excel: " + err.message);
@@ -1663,8 +1810,13 @@ async function exportExcelSemuaPetugas(chatId) {
 // HELPER
 // ==================
 function parseKP(kp) {
-    let [km, meter] = kp.split("+");
-    return parseInt(km) * 1000 + parseInt(meter);
+    if (!kp) return 0;
+    let s = kp.toString().trim();
+    if (s.includes('+')) {
+        let [km, meter] = s.split('+');
+        return parseInt(km) * 1000 + parseInt(meter);
+    }
+    return parseInt(s) || 0;
 }
 
 function formatKP(totalMeter) {
